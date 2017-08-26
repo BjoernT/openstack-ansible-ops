@@ -68,14 +68,4 @@ if [[ ! -f "/opt/leap42/openstack-ansible-${MITAKA_RELEASE}-db.leap" ]]; then
   tag_leap_success "${MITAKA_RELEASE}-db"
 fi
 
-# Newton migrations
-if [[ ! -f "/opt/leap42/openstack-ansible-${NEWTON_RELEASE}-db.leap" ]]; then
-  notice "Running Newton DB Migrations"
-  link_release "/opt/leap42/openstack-ansible-${NEWTON_RELEASE}"
-  RUN_TASKS=()
-  RUN_TASKS+=("${UPGRADE_UTILS}/db-collation-alter.yml")
-  RUN_TASKS+=("${UPGRADE_UTILS}/db-migrations-newton.yml -e 'venv_tar_location=/opt/leap42/venvs/openstack-ansible-${NEWTON_RELEASE}.tgz'")
-  run_items "/opt/leap42/openstack-ansible-${NEWTON_RELEASE}"
-  tag_leap_success "${NEWTON_RELEASE}-db"
-fi
 ### Run the DB migrations
