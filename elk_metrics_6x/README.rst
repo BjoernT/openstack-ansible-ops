@@ -44,6 +44,11 @@ Configure the Elasticsearch endpoints:
   known variable file which will be sourced at runtime. If using HAProxy, edit
   the `/etc/openstack_deploy/user_variables.yml` file and add the following
   lines.
+  
+  In case ``no_container`` was set for the cluster metrics hosts, define
+  the host as ``haproxy_backend_node`` and ``groups['kibana']`` updates to 
+  ``groups['kibana_hosts']``. This is also true for other cluster metrics
+  groups.
 
 .. code-block:: yaml
 
@@ -51,7 +56,7 @@ Configure the Elasticsearch endpoints:
       - service:
           haproxy_service_name: elastic-logstash
           haproxy_ssl: False
-          haproxy_backend_nodes: "{{ groups['Kibana'] | default([]) }}"  # Kibana nodes are also Elasticsearch coordination nodes
+          haproxy_backend_nodes: "{{ groups['kibana'] | default([]) }}"  # Kibana nodes are also Elasticsearch coordination nodes
           haproxy_port: 9201  # This is set using the "elastic_hap_port" variable
           haproxy_check_port: 9200  # This is set using the "elastic_port" variable
           haproxy_backend_port: 9200  # This is set using the "elastic_port" variable
@@ -65,15 +70,14 @@ Configure the Kibana endpoints:
   present it can provide a highly available address for users to access a pool
   of Kibana nodes which will provide a much better user experience. If using
   HAProxy, edit the `/etc/openstack_deploy/user_variables.yml` file and add the
-  following lines.
+  following lines to the `haproxy_extra_services` override:
 
 .. code-block:: yaml
 
-    haproxy_extra_services:
       - service:
           haproxy_service_name: Kibana
           haproxy_ssl: False
-          haproxy_backend_nodes: "{{ groups['Kibana'] | default([]) }}"
+          haproxy_backend_nodes: "{{ groups['kibana'] | default([]) }}"
           haproxy_port: 81  # This is set using the "Kibana_nginx_port" variable
           haproxy_balance_type: tcp
 
@@ -82,11 +86,10 @@ Configure the APM endpoints:
   Performance Monitoring data to the APM server. A load balancer will provide
   a highly available address which APM clients can use to connect to a pool of
   APM nodes. If using HAProxy, edit the `/etc/openstack_deploy/user_variables.yml`
-  and add the following lines
+  and add the following lines to the `haproxy_extra_services` override:
 
 .. code-block:: yaml
 
-    haproxy_extra_services:
       - service:
           haproxy_service_name: apm-server
           haproxy_ssl: False
@@ -229,7 +232,7 @@ Optional | run the haproxy-install playbook
 .. code-block:: bash
 
     cd /opt/openstack-ansible/playbooks/
-    openstack-ansible haproxy-install.yml --tags=haproxy-service-config
+    openstack-ansible haproxy-install.yml --tags haproxy-config
 
 
 Setup | system configuration
@@ -263,12 +266,12 @@ the Elasticsearch cluster in multiple containers and one logging host under
 
     vi /etc/openstack_deploy/conf.d/elk.yml
 
-Create the containers
+Create the containers (skip if ``no_container`` is set)
 
 .. code-block:: bash
 
    cd /opt/openstack-ansible/playbooks
-   openstack-ansible lxc-containers-create.yml --limit elk_all
+   openstack-ansible containers-deploy.yml --limit elk_all
 
 
 Deploying | Installing with embedded Ansible
@@ -281,21 +284,22 @@ playbooks.
 
 .. code-block:: bash
 
-    source bootstrap-embedded-ansible.sh
+     cd /opt/openstack-ansible-ops
+     source bootstrap-embedded-ansible/bootstrap-embedded-ansible.sh
 
 
 Deploying | Manually resolving the dependencies
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This playbook has external role dependencies. If Ansible is not installed with
-the `bootstrap-ansible.sh` script these dependencies can be resolved with the
+the ``bootstrap-embedded-ansible.sh`` script these dependencies can be resolved with the
 ``ansible-galaxy`` command and the ``ansible-role-requirements.yml`` file.
 
 * Example galaxy execution
 
 .. code-block:: bash
 
-    ansible-galaxy install -r ansible-role-requirements.yml
+    ansible-galaxy install -r elk_metrics_6x/ansible-role-requirements.yml
 
 
 Once the dependencies are set make sure to set the action plugin path to the
